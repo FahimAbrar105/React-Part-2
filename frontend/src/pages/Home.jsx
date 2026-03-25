@@ -2,10 +2,10 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Home = () => {
-    const { user } = useAuth();
+  const { user } = useAuth();
 
-    return (
-        <div className="bg-bg min-h-screen">
+  return (
+    <div className="bg-bg min-h-screen">
             {/* Market Dashboard Header */}
             <div className="bg-surface border-b border-border py-8">
                 <div className="container mx-auto px-4">
@@ -105,23 +105,23 @@ const Home = () => {
                             {user ? `WELCOME BACK, ${user.name?.toUpperCase() || 'TRADER'}` : 'START TRADING TODAY'}
                         </h2>
                         <div className="flex justify-center space-x-4">
-                            {user ? (
-                                <Link to="/dashboard" className="px-6 py-2 bg-action text-white font-mono font-bold text-sm hover:bg-blue-600 transition flex items-center space-x-2">
+                            {user ?
+              <Link to="/dashboard" className="px-6 py-2 bg-action text-white font-mono font-bold text-sm hover:bg-blue-600 transition flex items-center space-x-2">
                                     <span>GO TO DASHBOARD</span>
                                     <i className="fas fa-arrow-right"></i>
-                                </Link>
-                            ) : (
-                                <>
+                                </Link> :
+
+              <>
                                     <Link to="/login" className="px-6 py-2 border border-action text-action font-mono text-sm hover:bg-action hover:text-white transition">LOGIN</Link>
                                     <Link to="/register" className="px-6 py-2 bg-bull text-black font-mono font-bold text-sm hover:bg-green-400 transition">OPEN ACCOUNT</Link>
                                 </>
-                            )}
+              }
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    );
+        </div>);
+
 };
 
 export default Home;

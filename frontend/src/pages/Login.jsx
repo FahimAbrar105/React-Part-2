@@ -3,47 +3,44 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const { login } = useAuth();
-    const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-        try {
-            const data = await login(email, password);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    try {
+      const data = await login(email, password);
 
-            if (data.redirect) {
-                if (data.email) {
-                    // Pass email to verify page if needed, for ours verify takes url param? 
-                    // Backend redirects: /auth/verify?email=... but here we returned JSON.
-                    // Let's assume /verify page can handle it or we pass state.
-                    // Actually backend said: redirect: '/verify'
-                    navigate(data.redirect + (data.email ? `?email=${data.email}` : ''));
-                } else {
-                    navigate(data.redirect);
-                }
-            } else {
-                navigate('/dashboard');
-            }
-        } catch (err: any) {
-            setError(err.response?.data?.error || 'Login failed');
+      if (data.redirect) {
+        if (data.email) {
+
+          navigate(data.redirect + (data.email ? `?email=${data.email}` : ''));
+        } else {
+          navigate(data.redirect);
         }
-    };
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Login failed');
+    }
+  };
 
-    return (
-        <div className="h-screen flex items-center justify-center font-mono relative overflow-hidden bg-bg text-text-primary">
+  return (
+    <div className="h-screen flex items-center justify-center font-mono relative overflow-hidden bg-bg text-text-primary">
             {/* Scanline Overlay */}
             <div className="scanline"></div>
 
             {/* Background Grid */}
             <div className="absolute inset-0 z-0 opacity-20"
-                style={{
-                    backgroundImage: 'linear-gradient(#2d3748 1px, transparent 1px), linear-gradient(90deg, #2d3748 1px, transparent 1px)',
-                    backgroundSize: '30px 30px'
-                }}>
+      style={{
+        backgroundImage: 'linear-gradient(#2d3748 1px, transparent 1px), linear-gradient(90deg, #2d3748 1px, transparent 1px)',
+        backgroundSize: '30px 30px'
+      }}>
             </div>
 
             {/* Login Terminal */}
@@ -66,17 +63,17 @@ const Login = () => {
                         <p className="text-text-secondary text-xs mt-2">ENTER CREDENTIALS TO INITIALIZE SESSION</p>
                     </div>
 
-                    {error && (
-                        <div className="bg-bear/10 border border-bear/50 text-bear text-xs p-3 mb-6 rounded flex items-center gap-2">
+                    {error &&
+          <div className="bg-bear/10 border border-bear/50 text-bear text-xs p-3 mb-6 rounded flex items-center gap-2">
                             <i className="fas fa-exclamation-triangle"></i>
                             <span>{error}</span>
                         </div>
-                    )}
+          }
 
                     {/* Social Login */}
                     <div className="grid grid-cols-2 gap-4 mb-6">
                         <a href="http://localhost:5000/auth/google"
-                            className="flex items-center justify-center gap-2 bg-white hover:bg-gray-200 text-gray-900 py-2 rounded text-xs font-bold transition border border-gray-300">
+            className="flex items-center justify-center gap-2 bg-white hover:bg-gray-200 text-gray-900 py-2 rounded text-xs font-bold transition border border-gray-300">
                             <svg className="w-4 h-4" viewBox="0 0 24 24">
                                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
                                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
@@ -86,7 +83,7 @@ const Login = () => {
                         </a>
 
                         <a href="http://localhost:5000/auth/github"
-                            className="flex items-center justify-center gap-2 bg-[#2b3137] hover:bg-[#24292e] text-white py-2 rounded text-xs font-bold transition border border-border">
+            className="flex items-center justify-center gap-2 bg-[#2b3137] hover:bg-[#24292e] text-white py-2 rounded text-xs font-bold transition border border-border">
                             <i className="fab fa-github"></i> GITHUB
                         </a>
                     </div>
@@ -106,13 +103,13 @@ const Login = () => {
                             <div className="relative">
                                 <i className="fas fa-envelope absolute left-3 top-3 text-text-secondary"></i>
                                 <input
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    required
-                                    placeholder="student@iut-dhaka.edu"
-                                    className="w-full bg-bg border border-border rounded py-2 pl-9 pr-3 text-sm text-white focus:border-action focus:ring-1 focus:ring-action outline-none font-mono placeholder-text-secondary/30"
-                                />
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  placeholder="student@iut-dhaka.edu"
+                  className="w-full bg-bg border border-border rounded py-2 pl-9 pr-3 text-sm text-white focus:border-action focus:ring-1 focus:ring-action outline-none font-mono placeholder-text-secondary/30" />
+                
                             </div>
                         </div>
 
@@ -121,25 +118,25 @@ const Login = () => {
                             <div className="relative">
                                 <i className="fas fa-lock absolute left-3 top-3 text-text-secondary"></i>
                                 <input
-                                    type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                    placeholder="••••••••"
-                                    className="w-full bg-bg border border-border rounded py-2 pl-9 pr-3 text-sm text-white focus:border-action focus:ring-1 focus:ring-action outline-none font-mono placeholder-text-secondary/30"
-                                />
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  placeholder="••••••••"
+                  className="w-full bg-bg border border-border rounded py-2 pl-9 pr-3 text-sm text-white focus:border-action focus:ring-1 focus:ring-action outline-none font-mono placeholder-text-secondary/30" />
+                
                             </div>
                         </div>
 
                         <button type="submit"
-                            className="w-full bg-action hover:bg-blue-600 text-white font-bold py-2.5 rounded text-sm transition tracking-widest border border-action/50 shadow-[0_0_15px_rgba(41,98,255,0.3)] mt-4">
+            className="w-full bg-action hover:bg-blue-600 text-white font-bold py-2.5 rounded text-sm transition tracking-widest border border-action/50 shadow-[0_0_15px_rgba(41,98,255,0.3)] mt-4">
                             INITIALIZE LINK
                         </button>
                     </form>
 
                     <div className="mt-6 text-center text-xs text-text-secondary">
                         NO CLEARANCE? <a href="/register"
-                            className="text-action hover:text-white underline decoration-dashed underline-offset-4">REQUEST ACCESS</a>
+            className="text-action hover:text-white underline decoration-dashed underline-offset-4">REQUEST ACCESS</a>
                     </div>
                 </div>
 
@@ -149,8 +146,8 @@ const Login = () => {
                     <span>CNX: <span className="text-action animate-pulse">SECURE</span></span>
                 </div>
             </div>
-        </div>
-    );
+        </div>);
+
 };
 
 export default Login;

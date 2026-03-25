@@ -21,11 +21,18 @@ exports.getDashboardData = async (req, res) => {
             orderObj.matches = matches;
             return orderObj;
         }));
+        // Fetch watchlist (holdings) with populated product data
+        const User = require('../models/User');
+        const userWithWatchlist = await User.findById(req.user.id).populate({
+            path: 'watchlist',
+            select: 'title price category images status createdAt'
+        });
 
         res.json({
             user: req.user,
             myProducts,
-            myOrders: ordersWithMatches
+            myOrders: ordersWithMatches,
+            watchlist: userWithWatchlist.watchlist || []
         });
     } catch (err) {
         console.error(err);

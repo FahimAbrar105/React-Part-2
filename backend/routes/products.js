@@ -9,7 +9,10 @@ const {
     createProduct,
     deleteProduct,
     createLimitOrder,
-    deleteLimitOrder
+    deleteLimitOrder,
+    getMarketStats,
+    holdProduct,
+    unholdProduct
 } = require('../controllers/productController');
 const { protect } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -29,9 +32,14 @@ router.post('/', protect, (req, res, next) => {
 }, createProduct);
 router.post('/orders', protect, createLimitOrder);
 router.post('/orders/:id/delete', protect, deleteLimitOrder);
+router.get('/:id/market-stats', getMarketStats);
 router.get('/:id', getProduct);
 
 // Delete handled via POST
 router.post('/:id/delete', protect, deleteProduct);
+
+// Watchlist endpoints
+router.post('/:id/hold', protect, holdProduct);
+router.delete('/:id/hold', protect, unholdProduct);
 
 module.exports = router;

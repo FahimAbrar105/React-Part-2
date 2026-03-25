@@ -104,10 +104,8 @@ router.get('/github/callback', (req, res, next) => {
         if (err) { return next(err); }
         if (!user) {
             if (info && info.message && info.message.includes('@iut-dhaka.edu')) {
-                // req.flash('error', info.message);
                 return res.redirect('http://localhost:5173/register?error=' + encodeURIComponent(info.message));
             }
-            // req.flash('error', 'Authentication failed (Email might be private or invalid).');
             return res.redirect('http://localhost:5173/login?error=AuthenticationFailed');
         }
         // OTP Required
