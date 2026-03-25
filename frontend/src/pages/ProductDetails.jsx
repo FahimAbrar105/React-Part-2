@@ -1,443 +1,400 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler } from
-'chart.js';
-import { Line } from 'react-chartjs-2';
+import '../styles/ProductDetails.css';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+const POLL_INTERVAL = 8000; // 8 seconds
+const MAX_CHART_POINTS = 30;
 
 const ProductDetails = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [activeImage, setActiveImage] = useState('');
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const { user } = useAuth();
 
-  // Terminal Simulation State
-  const [currentPrice, setCurrentPrice] = useState('0.00');
-  const [percentChange, setPercentChange] = useState('0.00');
-  const [asks, setAsks] = useState([]);
-  const [bids, setBids] = useState([]);
-  const [chartData, setChartData] = useState(null);
+    const [product, setProduct] = useState(null);
+    const [marketStats, setMarketStats] = useState(null);
+    const [priceHistory, setPriceHistory] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [activeTimeRange, setActiveTimeRange] = useState('30D');
+    const intervalRef = useRef(null);
 
-  useEffect(() => {
-    const fetchProduct = async () => {
-      try {
-        const res = await axios.get(`/products/${id}`);
-        const prod = res.data.product;
-        setProduct(prod);
-        setActiveImage(prod.images && prod.images.length > 0 ? prod.images[0] : '');
+    // Fetch product data
+    useEffect(() => {
+        const fetchProduct = async () => {
+            try {
+                const res = await axios.get(`/products/${id}`);
+                setProduct(res.data.product);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchProduct();
+    }, [id]);
 
-        // Initialize Terminal Data
-        initializeTerminal(prod.price);
-      } catch (err) {
-        setError(err.response?.data?.error || 'Failed to load asset data');
-      } finally {
-        setLoading(false);
-      }
+    // Fetch market stats and build chart
+    const fetchMarketStats = useCallback(async () => {
+        try {
+            const res = await axios.get(`/products/${id}/market-stats`);
+            const stats = res.data;
+            setMarketStats(stats);
+
+            // Add micro-noise (±1.5%) for stock-market jitter
+            const noise = 1 + (Math.random() - 0.5) * 0.03;
+            const noisyPrice = Math.round(stats.livePrice * noise * 100) / 100;
+
+            setPriceHistory(prev => {
+                const next = [...prev, noisyPrice];
+                if (next.length > MAX_CHART_POINTS) next.shift();
+                return next;
+            });
+        } catch (err) {
+            console.error('Market stats fetch error:', err);
+        }
+    }, [id]);
+
+    useEffect(() => {
+        fetchMarketStats();
+        intervalRef.current = setInterval(fetchMarketStats, POLL_INTERVAL);
+        return () => clearInterval(intervalRef.current);
+    }, [fetchMarketStats]);
+
+    // Initialize the price history with seed data once we have marketStats
+    useEffect(() => {
+        if (marketStats && priceHistory.length <= 1) {
+            const base = marketStats.basePrice;
+            const live = marketStats.livePrice;
+            const seed = [];
+            for (let i = 0; i < 20; i++) {
+                const t = i / 19;
+                const interpolated = base + (live - base) * t;
+                const noise = 1 + (Math.random() - 0.5) * 0.04;
+                seed.push(Math.round(interpolated * noise * 100) / 100);
+            }
+            setPriceHistory(seed);
+        }
+    }, [marketStats]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleDelete = async () => {
+        if (!window.confirm('Are you sure you want to liquidate this asset?')) return;
+        try {
+            await axios.post(`/products/${id}/delete`);
+            navigate('/dashboard');
+        } catch (err) {
+            console.error(err);
+            alert('Failed to liquidate asset');
+        }
     };
 
-    if (id) fetchProduct();
-  }, [id]);
-
-  const initializeTerminal = (basePrice) => {
-    setCurrentPrice(basePrice.toFixed(2));
-
-    // Generate initial Order Book
-    const initialAsks = [];
-    const initialBids = [];
-    for (let i = 0; i < 5; i++) {
-      initialAsks.push({
-        id: i,
-        trader: 'Trader_' + Math.floor(Math.random() * 9000 + 1000),
-        size: Math.floor(Math.random() * 5) + 1,
-        price: (basePrice + (i + 1) * 5 + Math.random()).toFixed(2)
-      });
-      initialBids.push({
-        id: i,
-        trader: 'Student_' + Math.floor(Math.random() * 9000 + 1000),
-        size: Math.floor(Math.random() * 5) + 1,
-        price: (basePrice - (i + 1) * 5 - Math.random()).toFixed(2)
-      });
-    }
-    setAsks(initialAsks);
-    setBids(initialBids);
-
-    // Generate Chart Data (Random Walk)
-    const labels = Array.from({ length: 30 }, (_, i) => `Day ${i + 1}`);
-    let dataPoints = [];
-    let price = basePrice * 0.8;
-    for (let i = 0; i < 30; i++) {
-      price = price * (1 + (Math.random() - 0.45) * 0.1);
-      dataPoints.push(price);
-    }
-    dataPoints[29] = basePrice; // Ensure ends at current
-
-    setChartData({
-      labels,
-      datasets: [{
-        label: 'Price History',
-        data: dataPoints,
-        borderColor: '#2962ff',
-        backgroundColor: (context) => {
-          const ctx = context.chart.ctx;
-          const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-          gradient.addColorStop(0, 'rgba(41, 98, 255, 0.5)');
-          gradient.addColorStop(1, 'rgba(41, 98, 255, 0)');
-          return gradient;
-        },
-        fill: true,
-        tension: 0.4,
-        pointRadius: 0,
-        pointHoverRadius: 4
-      }]
-    });
-
-    // Start Jitter Interval
-    const interval = setInterval(() => {
-      const jitter = (Math.random() - 0.5) * 5;
-      const newPrice = basePrice + jitter;
-      setCurrentPrice(newPrice.toFixed(2));
-
-      const change = (newPrice - basePrice) / basePrice * 100;
-      setPercentChange((change > 0 ? '+' : '') + change.toFixed(2));
-
-      // Randomly update order book
-      if (Math.random() > 0.5) {
-        setAsks((prev) => {
-          const newAsks = [...prev];
-          if (newAsks[0]) newAsks[0].price = (newPrice + Math.random() * 2).toFixed(2);
-          return newAsks;
-        });
-      } else {
-        setBids((prev) => {
-          const newBids = [...prev];
-          if (newBids[0]) newBids[0].price = (newPrice - Math.random() * 2).toFixed(2);
-          return newBids;
-        });
-      }
-
-    }, 2000);
-
-    return () => clearInterval(interval);
-  };
-
-  const addToPortfolio = (type) => {
-    if (!product) return;
-    const item = {
-      id: product._id,
-      title: product.title,
-      price: product.price,
-      image: product.images[0] || "",
-      type: type,
-      timestamp: Date.now()
+    const handleStartChat = () => {
+        if (!user) return navigate('/login');
+        if (product.user._id === (user.id || user._id)) return alert("You cannot chat with yourself");
+        navigate(`/chat/start/${product.user._id}?productId=${product._id}`);
     };
 
-    const portfolio = JSON.parse(localStorage.getItem('terminal_portfolio') || '[]');
-    if (!portfolio.find((p) => p.id === item.id)) {
-      portfolio.push(item);
-      localStorage.setItem('terminal_portfolio', JSON.stringify(portfolio));
-      alert(`${type} ORDER CONFIRMED`);
+    // ─── Chart helpers ───
+    const buildChartPath = (data, width, height) => {
+        if (data.length < 2) return { linePath: '', areaPath: '' };
 
-      // Play Sound
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      oscillator.type = 'sine';
-      oscillator.frequency.value = 800;
-      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-      oscillator.start();
-      oscillator.stop(audioContext.currentTime + 0.1);
-    } else {
-      alert('POSITION ALREADY OPEN');
+        const min = Math.min(...data) * 0.998;
+        const max = Math.max(...data) * 1.002;
+        const range = max - min || 1;
+
+        const points = data.map((val, i) => ({
+            x: (i / (data.length - 1)) * width,
+            y: height - ((val - min) / range) * height
+        }));
+
+        let linePath = `M${points[0].x},${points[0].y}`;
+        for (let i = 1; i < points.length; i++) {
+            const prev = points[i - 1];
+            const curr = points[i];
+            const cpx1 = prev.x + (curr.x - prev.x) * 0.4;
+            const cpx2 = prev.x + (curr.x - prev.x) * 0.6;
+            linePath += ` C${cpx1},${prev.y} ${cpx2},${curr.y} ${curr.x},${curr.y}`;
+        }
+
+        const areaPath = linePath + ` V ${height} H 0 Z`;
+        return { linePath, areaPath };
+    };
+
+    const getYAxisLabels = (data) => {
+        if (data.length === 0) return ['0', '0', '0', '0', '0'];
+        const min = Math.min(...data) * 0.998;
+        const max = Math.max(...data) * 1.002;
+        const labels = [];
+        for (let i = 0; i < 5; i++) {
+            const val = max - (i / 4) * (max - min);
+            labels.push(Math.round(val).toLocaleString());
+        }
+        return labels;
+    };
+
+    // ─── Generate simulated order book entries ───
+    const generateOrderBook = () => {
+        if (!marketStats || !product) return { sells: [], buys: [] };
+
+        const { livePrice, limitOrders } = marketStats;
+
+        // Sell-side: orders above live price
+        const sells = [];
+        for (let i = 0; i < 5; i++) {
+            const spreadMul = 1 + (Math.random() * 0.003 + 0.001) * (5 - i);
+            const price = livePrice * spreadMul;
+            const displayName = limitOrders[i]
+                ? (limitOrders[i].user?.name?.split(' ')[0] || 'Trader') + '_' + Math.floor(Math.random() * 9000 + 1000)
+                : 'Trader_' + Math.floor(Math.random() * 9000 + 1000);
+            sells.push({
+                trader: displayName,
+                size: Math.floor(Math.random() * 9) + 1,
+                price: Math.round(price * 100) / 100
+            });
+        }
+        sells.sort((a, b) => b.price - a.price);
+
+        // Buy-side: orders below live price
+        const buys = [];
+        for (let i = 0; i < 5; i++) {
+            const spreadMul = 1 - (Math.random() * 0.003 + 0.001) * (i + 1);
+            const price = livePrice * spreadMul;
+            buys.push({
+                trader: 'Student_' + Math.floor(Math.random() * 9000 + 1000),
+                size: Math.floor(Math.random() * 9) + 1,
+                price: Math.round(price * 100) / 100
+            });
+        }
+        buys.sort((a, b) => b.price - a.price);
+
+        const spread = sells.length && buys.length
+            ? Math.round((sells[sells.length - 1].price - buys[0].price) * 100) / 100
+            : 0;
+
+        return { sells, buys, spread: Math.abs(spread).toFixed(2) };
+    };
+
+    // ─── Render ───
+    if (loading) {
+        return (
+            <div className="product-details-page">
+                <div className="loading-state">
+                    <span className="loading-pulse">LOADING TERMINAL...</span>
+                </div>
+            </div>
+        );
     }
-  };
 
-  const handleLiquidate = async () => {
-    if (!confirm('Are you sure you want to LIQUIDATE this position?')) return;
-    try {
-      await axios.post(`/products/${id}/delete`); // Using POST as per backup/API
-      alert('ASSET LIQUIDATED');
-      navigate('/dashboard');
-    } catch (err) {
-      console.error(err);
-      alert('LIQUIDATION FAILED');
+    if (!product) {
+        return (
+            <div className="product-details-page">
+                <div className="loading-state">
+                    ASSET NOT FOUND — <Link to="/products" style={{ color: '#4dabf7' }}>RETURN TO MARKETS</Link>
+                </div>
+            </div>
+        );
     }
-  };
 
-  if (loading) return <div className="p-8 text-center text-text-secondary font-mono animate-pulse">ESTABLISHING SECURE CONNECTION...</div>;
-  if (error) return <div className="p-8 text-center text-bear font-mono">{error}</div>;
-  if (!product) return <div className="p-8 text-center text-text-secondary font-mono">ASSET NOT FOUND</div>;
+    const livePrice = marketStats?.livePrice ?? product.price;
+    const changePct = marketStats?.changePct ?? 0;
+    const isPositive = changePct >= 0;
+    const orderBook = generateOrderBook();
+    const { linePath, areaPath } = buildChartPath(priceHistory, 500, 200);
+    const yLabels = getYAxisLabels(priceHistory);
+    const isOwner = user && product.user._id === (user.id || user._id);
 
-  return (
-    <div className="container mx-auto px-4 py-8">
-            {/* Top Bar: Asset Name & Quick Stats */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-border pb-4">
-                <div>
-                    <div className="flex items-center space-x-3 mb-1">
-                        <h1 className="text-3xl font-bold text-white font-mono tracking-tighter">
-                            {product.title.toUpperCase()}
+    const imgSrc = product.images && product.images.length > 0
+        ? (product.images[0].startsWith('http') ? product.images[0] : `http://localhost:5000/${product.images[0]}`)
+        : null;
+
+    return (
+        <div className="product-details-page">
+            {/* ── Navbar ── */}
+            <div className="pd-container">
+                {/* ── Asset Header ── */}
+                <header className="asset-header">
+                    <div className="asset-title">
+                        <h1>
+                            {product.title} <span className="badge">SPOT</span>
                         </h1>
-                        <span className="px-2 py-0.5 rounded bg-action/20 text-action text-xs font-mono border border-action/30">SPOT</span>
-                    </div>
-                    <div className="flex items-center space-x-4 text-xs font-mono text-text-secondary">
-                        <span>SECTOR: <span className="text-white">{product.category.toUpperCase()}</span></span>
-                        <span>ID: <span className="text-white">{product._id.substring(0, 8)}</span></span>
-                    </div>
-                </div>
-
-                <div className="flex items-end flex-col mt-4 md:mt-0">
-                    <div className="flex items-baseline space-x-3">
-                        <span className="text-xl font-bold text-bull font-mono">৳{currentPrice}</span>
-                        <span className="text-sm text-bull flex items-center">
-                            <i className="fas fa-caret-up mr-1"></i>
-                            <span>{percentChange}%</span>
-                        </span>
-                    </div>
-                    <p className="text-[10px] text-gray-400 font-mono mt-1">
-                        BASE PRICE: <span className="text-white font-bold">৳{product.price}</span> • REAL-TIME FEED
-                    </p>
-                </div>
-            </div>
-
-            {/* Main Terminal Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto lg:h-[600px]">
-
-                {/* Left Col: Visuals (3 cols) */}
-                <div className="lg:col-span-3 flex flex-col gap-4 h-full">
-                    <div className="bg-surface border border-border rounded-lg p-2 h-64 lg:h-auto flex-grow relative overflow-hidden group">
-                        {/* Scanline Effect */}
-                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-action/5 to-transparent z-10 animate-scan pointer-events-none" style={{ animation: 'scan 2s linear infinite' }}></div>
-                        <style>{`
-                            @keyframes scan {
-                                0% { transform: translateY(-100%); }
-                                100% { transform: translateY(100%); }
-                            }
-                        `}</style>
-
-                        {activeImage ?
-            <img
-              src={activeImage}
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-              onError={(e) => {
-                e.target.style.display = 'none';
-                e.target.parentElement?.querySelector('.fallback-icon')?.classList.remove('hidden');
-              }} /> :
-
-            null}
-
-                        <div className={`w-full h-full flex flex-col items-center justify-center bg-black/50 border border-border/50 fallback-icon absolute inset-0 ${activeImage ? 'hidden' : ''}`}>
-                            <i className="fas fa-cube text-4xl text-border mb-2 opacity-50"></i>
-                            <span className="text-xs font-mono text-bear tracking-widest">[REDACTED]</span>
-                        </div>
-
-                        <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/80 text-[10px] font-mono text-white border border-white/20">
-                            IMG_SOURCE: TRADER_UPLOAD
-                        </div>
-                    </div>
-
-                    {/* Thumbnails */}
-                    {product.images && product.images.length > 1 &&
-          <div className="grid grid-cols-5 gap-2">
-                            {product.images.map((img, idx) =>
-            <div
-              key={idx}
-              onClick={() => setActiveImage(img)}
-              className={`aspect-square bg-bg border rounded cursor-pointer overflow-hidden relative ${activeImage === img ? 'border-action opacity-100' : 'border-border opacity-50 hover:opacity-100'}`}>
-              
-                                    <img src={img} className="w-full h-full object-cover" />
-                                </div>
-            )}
-                        </div>
-          }
-
-                    {/* Asset Fundamentals */}
-                    <div className="bg-surface border border-border rounded-lg p-4 flex-grow overflow-y-auto">
-                        <h3 className="text-xs font-bold text-text-secondary border-b border-border pb-2 mb-2">ASSET FUNDAMENTALS</h3>
-                        <p className="text-sm text-white font-mono leading-relaxed opacity-80">
-                            {product.description}
+                        <p className="asset-meta">
+                            SECTOR: {product.category.toUpperCase()} &nbsp; ID: {product._id.slice(-8)}
                         </p>
-
-                        <div className="mt-4 pt-4 border-t border-border">
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs text-text-secondary">SELLER RATING</span>
-                                <div className="flex space-x-1">
-                                    <i className="fas fa-star text-bull text-xs"></i>
-                                    <i className="fas fa-star text-bull text-xs"></i>
-                                    <i className="fas fa-star text-bull text-xs"></i>
-                                    <i className="fas fa-star text-bull text-xs"></i>
-                                    <i className="fas fa-star text-gray-600 text-xs"></i>
-                                </div>
-                            </div>
-                            {user && product.user && user._id !== product.user._id &&
-              <Link to={`/chat/${product.user._id}`} className="block w-full text-center py-2 mt-4 border border-text-secondary text-text-secondary hover:text-white hover:border-white text-xs font-mono transition">
-                                    INITIATE SECURE COMMS
-                                </Link>
-              }
+                    </div>
+                    <div className="asset-price">
+                        <div className={`price-main ${isPositive ? 'positive' : 'negative'}`}>
+                            ৳{livePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            <span className="change">
+                                {isPositive ? '+' : ''}{changePct.toFixed(2)}%
+                            </span>
+                        </div>
+                        <div className="price-sub">
+                            BASE PRICE: <span className="strikethrough">৳{product.price.toLocaleString()}</span> — REAL-TIME FEED
                         </div>
                     </div>
-                </div>
+                </header>
 
-                {/* Center Col: Order Book (3 cols) */}
-                <div className="lg:col-span-3 bg-surface border border-border rounded-lg flex flex-col h-full overflow-hidden">
-                    <div className="p-3 border-b border-border flex justify-between items-center bg-bg/50">
-                        <h3 className="text-xs font-bold text-white">ORDER BOOK</h3>
-                        <span className="text-[10px] text-bull animate-pulse">● LIVE</span>
-                    </div>
+                {/* ── Dashboard Grid ── */}
+                <main className="dashboard-grid">
 
-                    <div className="flex-grow overflow-hidden relative flex flex-col">
-                        <div className="grid grid-cols-3 text-[10px] text-text-secondary p-2 border-b border-border bg-bg">
-                            <span>TRADER</span>
-                            <span className="text-center">SIZE</span>
-                            <span className="text-right">PRICE (৳)</span>
-                        </div>
-
-                        {/* Asks (Sells) */}
-                        <div className="flex flex-col-reverse h-1/2 overflow-hidden border-b border-border border-dashed">
-                            {asks.map((ask) =>
-              <div key={ask.id} className="grid grid-cols-3 text-xs p-1 hover:bg-white/5 cursor-pointer font-mono">
-                                    <span className="text-bear opacity-70 truncate">{ask.trader}</span>
-                                    <span className="text-center text-white">{ask.size}</span>
-                                    <span className="text-right text-bear">{ask.price}</span>
-                                </div>
-              )}
-                        </div>
-
-                        {/* Spread */}
-                        <div className="bg-bg py-1 text-center border-y border-border">
-                            <span className="text-xs font-mono text-text-secondary">SPREAD: 5.00</span>
-                        </div>
-
-                        {/* Bids (Buys) */}
-                        <div className="h-1/2 overflow-hidden">
-                            {bids.map((bid) =>
-              <div key={bid.id} className="grid grid-cols-3 text-xs p-1 hover:bg-white/5 cursor-pointer font-mono">
-                                    <span className="text-bull opacity-70 truncate">{bid.trader}</span>
-                                    <span className="text-center text-white">{bid.size}</span>
-                                    <span className="text-right text-bull">{bid.price}</span>
-                                </div>
-              )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Right Col: Analytics & Chart (6 cols) */}
-                <div className="lg:col-span-6 flex flex-col gap-4 h-full">
-                    {/* Chart Container */}
-                    <div className="bg-surface border border-border rounded-lg p-4 flex-grow flex flex-col">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xs font-bold text-white">PRICE PERFORMANCE (30D)</h3>
-                            <div className="flex space-x-2">
-                                <span className="text-[10px] bg-bg px-2 py-1 rounded text-text-secondary cursor-pointer hover:text-white">1H</span>
-                                <span className="text-[10px] bg-bg px-2 py-1 rounded text-text-secondary cursor-pointer hover:text-white">1D</span>
-                                <span className="text-[10px] bg-action px-2 py-1 rounded text-white font-bold cursor-pointer">30D</span>
+                    {/* ── Left Column ── */}
+                    <div className="col-left">
+                        <div className="card image-card">
+                            <div className="image-wrapper">
+                                {imgSrc ? (
+                                    <img src={imgSrc} alt={product.title} />
+                                ) : (
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#333', fontSize: '3rem' }}>📦</div>
+                                )}
                             </div>
                         </div>
-                        <div className="flex-grow w-full relative min-h-[300px]">
-                            {chartData &&
-              <Line
-                data={chartData}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  interaction: { intersect: false, mode: 'index' },
-                  plugins: { legend: { display: false } },
-                  scales: {
-                    x: { display: false },
-                    y: {
-                      grid: { color: '#2a2e39' },
-                      ticks: { color: '#b2b5be', font: { family: 'IBM Plex Mono' } }
-                    }
-                  }
-                }} />
 
-              }
+                        <div className="card fundamentals-card">
+                            <h3>ASSET FUNDAMENTALS</h3>
+                            <div className="fund-row">
+                                <span className="fund-label">DESCRIPTION</span>
+                            </div>
+                            <div className="fund-row" style={{ flexDirection: 'column', gap: '4px' }}>
+                                <span style={{ fontSize: '0.85rem', color: '#ccc', lineHeight: 1.5 }}>{product.description}</span>
+                            </div>
+                            <div className="fund-row">
+                                <span className="fund-label">SELLER</span>
+                                <span className="fund-value">{product.isAnonymous ? 'ANONYMOUS' : product.user.name}</span>
+                            </div>
+                            <div className="fund-row">
+                                <span className="fund-label">MARKET SHARE</span>
+                                <span className={`fund-value ${(marketStats?.categoryPct ?? 50) >= 50 ? 'green' : 'red'}`}>
+                                    {marketStats?.categoryPct?.toFixed(1) ?? '—'}%
+                                </span>
+                            </div>
+                            <div className="fund-row">
+                                <span className="fund-label">GLOBAL SUPPLY</span>
+                                <span className="fund-value">
+                                    {marketStats?.totalInCategory ?? '—'} / {marketStats?.totalGlobal ?? '—'}
+                                </span>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Execution Panel */}
-                    <div className="bg-surface border border-border rounded-lg p-6 h-auto">
-                        <div className="grid grid-cols-2 gap-4 h-full">
-                            {user && product.user && user._id === product.user._id ?
-              <div className="col-span-2">
-                                    <button
-                  onClick={handleLiquidate}
-                  className="w-full h-12 bg-bear hover:bg-red-600 text-white font-mono font-bold text-sm rounded transition flex items-center justify-center space-x-2">
-                  
-                                        <i className="fas fa-trash"></i>
-                                        <span>LIQUIDATE ASSET (DELETE)</span>
-                                    </button>
-                                </div> :
+                    {/* ── Middle Column: Order Book ── */}
+                    <div className="col-mid">
+                        <div className="card order-book-card">
+                            <div className="card-header">
+                                <h3>ORDER BOOK</h3>
+                                <span className="live-indicator">● LIVE</span>
+                            </div>
 
-              <>
-                                    <button
-                  onClick={() => addToPortfolio('LONG')}
-                  className="h-14 bg-bull hover:bg-green-400 text-black font-mono font-bold text-lg rounded shadow-lg shadow-bull/20 transition flex flex-col items-center justify-center border-b-4 border-green-700 active:border-b-0 active:translate-y-1">
-                  
-                                        <span>LONG POSITION</span>
-                                        <span className="text-[10px] font-normal opacity-80 font-sans">BUY NOW @ MKT</span>
-                                    </button>
-                                    <button
-                  onClick={() => addToPortfolio('HOLD')}
-                  className="h-14 bg-action hover:bg-blue-600 text-white font-mono font-bold text-lg rounded shadow-lg shadow-action/20 transition flex flex-col items-center justify-center border-b-4 border-blue-800 active:border-b-0 active:translate-y-1">
-                  
-                                        <span>HOLD</span>
-                                        <span className="text-[10px] font-normal opacity-80 font-sans">ADD TO PORTFOLIO</span>
-                                    </button>
+                            <div className="table-header">
+                                <span>TRADER</span>
+                                <span>SIZE</span>
+                                <span>PRICE (৳)</span>
+                            </div>
+
+                            {orderBook.sells.length > 0 || orderBook.buys.length > 0 ? (
+                                <>
+                                    <div className="order-list sell-list">
+                                        {orderBook.sells.map((o, i) => (
+                                            <div className="order-row red" key={`sell-${i}`}>
+                                                <span>{o.trader}</span>
+                                                <span>{o.size}</span>
+                                                <span>{o.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="spread-row">SPREAD: {orderBook.spread}</div>
+
+                                    <div className="order-list buy-list">
+                                        {orderBook.buys.map((o, i) => (
+                                            <div className="order-row green" key={`buy-${i}`}>
+                                                <span>{o.trader}</span>
+                                                <span>{o.size}</span>
+                                                <span>{o.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </>
-              }
+                            ) : (
+                                <div className="empty-orders">NO ACTIVE ORDERS IN THIS SECTOR</div>
+                            )}
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>);
 
+                    {/* ── Right Column ── */}
+                    <div className="col-right">
+                        <div className="card chart-card">
+                            <div className="card-header">
+                                <h3>PRICE PERFORMANCE (LIVE)</h3>
+                                <div className="time-toggles">
+                                    {['1H', '1D', '30D'].map(range => (
+                                        <button
+                                            key={range}
+                                            className={activeTimeRange === range ? 'active' : ''}
+                                            onClick={() => setActiveTimeRange(range)}
+                                        >
+                                            {range}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="chart-container">
+                                <div className="y-axis">
+                                    {yLabels.map((label, i) => (
+                                        <span key={i}>{label}</span>
+                                    ))}
+                                </div>
+                                <div className="graph-area">
+                                    <svg viewBox="0 0 500 200" preserveAspectRatio="none">
+                                        <defs>
+                                            <linearGradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+                                                <stop offset="0%" stopColor={isPositive ? '#00ff9d' : '#ff3366'} stopOpacity="0.3" />
+                                                <stop offset="100%" stopColor={isPositive ? '#00ff9d' : '#ff3366'} stopOpacity="0" />
+                                            </linearGradient>
+                                        </defs>
+                                        {/* Grid lines */}
+                                        {[0, 1, 2, 3, 4].map(i => (
+                                            <line
+                                                key={i}
+                                                x1="0" y1={i * 50}
+                                                x2="500" y2={i * 50}
+                                                stroke="#2a2c35" strokeWidth="1" strokeDasharray="4" opacity="0.5"
+                                            />
+                                        ))}
+                                        {areaPath && <path fill="url(#chartGradient)" d={areaPath} />}
+                                        {linePath && (
+                                            <path
+                                                fill="none"
+                                                stroke={isPositive ? '#00ff9d' : '#ff3366'}
+                                                strokeWidth="2.5"
+                                                d={linePath}
+                                                className="chart-line-animated"
+                                            />
+                                        )}
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        {isOwner ? (
+                            <button className="btn-liquidate" onClick={handleDelete}>
+                                🗑 LIQUIDATE ASSET (DELETE)
+                            </button>
+                        ) : (
+                            <button className="btn-message" onClick={handleStartChat}>
+                                ✉ CONTACT SELLER
+                            </button>
+                        )}
+                    </div>
+                </main>
+
+                <footer className="bottom-bar">
+                    Marketplace. Made for IUTians.
+                </footer>
+            </div>
+        </div>
+    );
 };
 
 export default ProductDetails;

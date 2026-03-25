@@ -204,11 +204,33 @@ exports.getMarketStats = async (req, res) => {
             ? (totalInCategory / totalGlobal) * 100
             : 50;
 
+        // Fetch category distribution to rank them by scarcity
+        const categoryCounts = await Product.aggregate([
+            { $group: { _id: "$category", count: { $sum: 1 } } }
+        ]);
+
+        const ALL_CATEGORIES = ['Books', 'Electronics', 'Furniture', 'Clothing', 'Stationery', 'Other'];
+        
+        // Merge DB counts with the master list to ensure empty categories have 0 count
+        const fullCategoryCounts = ALL_CATEGORIES.map(cat => {
+            const found = categoryCounts.find(c => (c._id || '').toLowerCase() === cat.toLowerCase());
+            return { category: cat, count: found ? found.count : 0 };
+        });
+
+        // Sort ascending by count (scarcest items first)
+        fullCategoryCounts.sort((a, b) => a.count - b.count);
+
+        const totalCategories = fullCategoryCounts.length;
+        const rankIndex = fullCategoryCounts.findIndex(c => c.category.toLowerCase() === (category || '').toLowerCase());
+
         let livePrice;
-        if (categoryPct <= 50) {
-            livePrice = basePrice * (0.85 + 0.15 * (categoryPct / 50));
+        if (totalCategories <= 1 || rankIndex === -1) {
+            livePrice = basePrice;
         } else {
-            livePrice = basePrice * (1.0 + 0.05 * ((categoryPct - 50) / 50));
+            // Interpolation: rankIndex 0 (least products) gets +5%, rankIndex max (most products) gets -5%
+            const t = rankIndex / (totalCategories - 1);
+            const multiplier = 1.05 - (0.10 * t);
+            livePrice = basePrice * multiplier;
         }
 
         livePrice = Math.round(livePrice * 100) / 100;

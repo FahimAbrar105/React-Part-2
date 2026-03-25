@@ -298,7 +298,7 @@ const Marketplace = () => {
 
                             <div className="p-4 flex-grow flex flex-col justify-between">
                                 <div>
-                                    <div className="flex justify-between items-start mb-2">
+                                    <div className="flex justify-between items-start mb-1">
                                         <h3 className="text-white font-bold text-base truncate pr-2 w-3/4">
                                             {product.title}
                                         </h3>
@@ -311,6 +311,9 @@ const Marketplace = () => {
                     strokeWidth="1.5" />
                   
                                         </svg>
+                                    </div>
+                                    <div className="text-xs text-text-secondary font-mono mb-2">
+                                        SECTOR: <span className="text-white">{product.category.toUpperCase()}</span>
                                     </div>
 
                                     {/* Price Display */}
