@@ -54,6 +54,56 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
+  const register = async (formData) => {
+    const res = await axios.post('/auth/register', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return res.data;
+  };
+
+  const verifyOtp = async (email, otp) => {
+    const res = await axios.post('/auth/verify-otp', { email, otp });
+    if (res.data.user) {
+      setUser(res.data.user);
+    }
+    return res.data;
+  };
+
+  const resendOtp = async (email) => {
+    const res = await axios.post('/auth/resend-otp', { email });
+    return res.data;
+  };
+
+  const completeProfile = async (formData) => {
+    const res = await axios.post('/auth/complete-profile', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    if (res.data.user) {
+      setUser(res.data.user);
+    }
+    return res.data;
+  };
+
+  const updateAvatar = async (formData) => {
+    const res = await axios.post('/auth/update-avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    if (res.data.user) {
+      setUser(res.data.user);
+    }
+    return res.data;
+  };
+
+  const removeAvatar = async () => {
+    const res = await axios.post('/auth/remove-avatar');
+    if (res.data.user) {
+      setUser(res.data.user);
+    }
+    return res.data;
+  };
+
   const logout = async () => {
     try {
       await axios.get('/auth/logout');
@@ -64,7 +114,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, checkUser }}>
+    <AuthContext.Provider value={{ user, loading, login, register, verifyOtp, resendOtp, completeProfile, updateAvatar, removeAvatar, logout, checkUser }}>
             {children}
         </AuthContext.Provider>);
 

@@ -123,17 +123,7 @@ const Marketplace = () => {
                         <div className="text-xl font-bold text-white font-mono">{activeNodes}</div>
                     </div>
                 </div>
-
-                <div className="flex items-center space-x-2 bg-surface p-1 rounded border border-border">
-                    <button className="px-3 py-1 rounded text-[10px] font-bold bg-bg text-white border border-border shadow-sm flex items-center gap-2">
-                        <i className="fas fa-th-large text-action"></i> GRID
-                    </button>
-                    <button className="px-3 py-1 rounded text-[10px] font-bold text-text-secondary hover:text-white flex items-center gap-2 hover:bg-bg/50 transition">
-                        <i className="fas fa-list"></i> LIST
-                    </button>
-                </div>
             </div>
-
             {/* Ticker Tape */}
             <div className="mb-8 overflow-hidden w-full relative border-y border-border/50 bg-black/20 py-1">
                 <style>

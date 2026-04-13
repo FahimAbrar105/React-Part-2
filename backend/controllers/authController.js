@@ -273,10 +273,6 @@ exports.logout = async (req, res) => {
 */
 exports.completeProfile = async (req, res) => {
     try {
-        if (!req.isAuthenticated()) {
-            return res.status(401).json({ error: 'Not authenticated', redirect: '/login' });
-        }
-
         const { studentId, contactNumber } = req.body;
         const user = await User.findById(req.user.id);
 
@@ -368,6 +364,61 @@ exports.removeAvatar = async (req, res) => {
         user.avatar = undefined; // Reset to default
         await user.save();
         res.json({ success: true, message: 'Profile picture removed.', user });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server Error' });
+    }
+};
+
+/*
+ * Resend OTP
+ */
+exports.resendOtp = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(400).json({ error: 'User not found' });
+        }
+
+        if (user.isVerified) {
+             return res.status(400).json({ error: 'User is already verified' });
+        }
+
+        // Generate new OTP, overriding old one naturally by setting field
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpExpires = Date.now() + 5 * 60 * 1000; // 5 mins
+
+        user.otp = otp;
+        user.otpExpires = otpExpires;
+        await user.save();
+
+        // Send OTP Email
+        const sendEmail = require('../utils/sendEmail');
+        const emailTemplate = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 10px; overflow: hidden;">
+                <div style="background-color: #CC2936; padding: 20px; text-align: center; color: white;">
+                    <h1 style="margin: 0;">IUT Marketplace</h1>
+                </div>
+                <div style="padding: 20px; background-color: #f9f9f9;">
+                    <h2 style="color: #333; text-align: center;">Verify Your Email</h2>
+                    <p style="color: #666; text-align: center; font-size: 16px;">We received a request to resend your code. Please use the verification code below to complete your registration.</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <span style="background-color: #fff; padding: 15px 30px; font-size: 24px; font-weight: bold; border: 2px solid #CC2936; border-radius: 5px; color: #CC2936; letter-spacing: 5px;">${otp}</span>
+                    </div>
+                    <p style="color: #666; text-align: center;">This code will expire in <strong>5 minutes</strong>.</p>
+                </div>
+            </div>
+        `;
+
+        await sendEmail({
+            email: user.email,
+            subject: 'New Verification Code - IUT Marketplace',
+            message: emailTemplate
+        });
+
+        res.json({ success: true, message: 'New OTP sent to email' });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Server Error' });

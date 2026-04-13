@@ -7,12 +7,41 @@ import { useAuth } from '../context/AuthContext';
 
 
 const Layout = ({ children }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateAvatar, removeAvatar } = useAuth();
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [randomCode, setRandomCode] = useState('00');
   const [shouldFlicker, setShouldFlicker] = useState(false);
+  const [avatarLoading, setAvatarLoading] = useState(false);
+
+  const handleRemoveAvatar = async () => {
+    try {
+        setAvatarLoading(true);
+        await removeAvatar();
+    } catch (err) {
+        console.error("Failed to remove avatar", err);
+    } finally {
+        setAvatarLoading(false);
+    }
+  };
+
+  const handleUpdateAvatar = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    try {
+        setAvatarLoading(true);
+        await updateAvatar(formData);
+    } catch (err) {
+        console.error("Failed to update avatar", err);
+    } finally {
+        setAvatarLoading(false);
+    }
+  };
 
   // Dynamic number effect for logo
   useEffect(() => {
@@ -171,18 +200,22 @@ const Layout = ({ children }) => {
                             </div>
 
                             {/* Action Buttons */}
-                            <div className="mt-8 flex gap-3">
-                                <button className="flex-1 bg-action hover:bg-blue-600 text-white font-bold py-3 rounded font-mono text-xs transition shadow-lg shadow-action/20">
+                            <div className="mt-8 flex gap-3 relative">
+                                {avatarLoading && <div className="absolute inset-0 z-10 bg-surface/80 flex items-center justify-center rounded"><i className="fas fa-spinner fa-spin text-action text-xl"></i></div>}
+                                
+                                <label className="flex-1 bg-action hover:bg-blue-600 text-white font-bold py-3 rounded font-mono text-xs transition shadow-lg shadow-action/20 text-center cursor-pointer flex items-center justify-center">
+                                    <input type="file" className="hidden" accept="image/*" onChange={handleUpdateAvatar} disabled={avatarLoading} />
                                     CHANGE PHOTO
-                                </button>
-                                <button className="flex-1 bg-bear/10 hover:bg-bear text-bear hover:text-white border border-bear/20 hover:border-bear font-bold py-3 rounded font-mono text-xs transition">
+                                </label>
+                                
+                                <button onClick={handleRemoveAvatar} disabled={avatarLoading} className="flex-1 bg-bear/10 hover:bg-bear text-bear hover:text-white border border-bear/20 hover:border-bear font-bold py-3 rounded font-mono text-xs transition cursor-pointer">
                                     REMOVE PHOTO
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
-      }
+            }
 
             {/* Main Content */}
             <main className="flex-grow">

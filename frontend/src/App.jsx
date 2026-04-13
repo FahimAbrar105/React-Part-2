@@ -1,6 +1,9 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Login from './pages/Login';
+import Register from './pages/Register';
+import Verify from './pages/Verify';
+import CompleteProfile from './pages/CompleteProfile';
 import Dashboard from './pages/Dashboard';
 import ChatInbox from './pages/ChatInbox';
 import ChatRoom from './pages/ChatRoom';
@@ -17,7 +20,9 @@ function App() {
             <BrowserRouter>
                 <Routes>
                     <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<Login />} /> {/* Temporary: point register to login for now or create generic auth page */}
+                    <Route path="/register" element={<Register />} />
+                    <Route path="/verify" element={<Verify />} />
+                    <Route path="/complete-profile" element={<CompleteProfile />} />
 
                     <Route
             path="/"

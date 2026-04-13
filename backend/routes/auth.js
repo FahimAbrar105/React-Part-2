@@ -5,7 +5,7 @@
 // Source: https://expressjs.com/en/guide/routing.html
 const express = require('express');
 const router = express.Router();
-const { register, login, logout, verifyOtp, getMe, updateAvatar, removeAvatar, completeProfile } = require('../controllers/authController');
+const { register, login, logout, verifyOtp, resendOtp, getMe, updateAvatar, removeAvatar, completeProfile } = require('../controllers/authController');
 
 const upload = require('../middleware/upload');
 const { protect } = require('../middleware/auth');
@@ -14,7 +14,8 @@ router.post('/register', register);
 router.post('/login', login);
 router.get('/logout', logout);
 router.post('/verify-otp', verifyOtp);
-router.post('/complete-profile', protect, completeProfile);
+router.post('/resend-otp', resendOtp);
+router.post('/complete-profile', protect, upload.single('avatar'), completeProfile);
 
 router.get('/me', protect, getMe);
 
