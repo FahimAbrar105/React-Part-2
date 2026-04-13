@@ -4,15 +4,6 @@ import io from 'socket.io-client';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
-const socket = io('http://localhost:5000');
-
-
-
-
-
-
-
-
 const ChatRoom = () => {
   const { userId: otherUserId } = useParams();
   const [searchParams] = useSearchParams();
@@ -26,12 +17,16 @@ const ChatRoom = () => {
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef(null);
   const [isAnonymousContext, setIsAnonymousContext] = useState(false);
+  const socketRef = useRef(null);
 
   useEffect(() => {
     if (!user || !otherUserId) return;
 
+    // Initialize socket dynamically 
+    socketRef.current = io('http://localhost:5000');
+
     // Join room
-    socket.emit('join', user._id);
+    socketRef.current.emit('join', user._id);
 
     // Fetch Room Data
     const fetchRoomData = async () => {
@@ -66,10 +61,11 @@ const ChatRoom = () => {
       }
     };
 
-    socket.on('message', messageHandler);
+    socketRef.current.on('message', messageHandler);
 
     return () => {
-      socket.off('message', messageHandler);
+      socketRef.current.off('message', messageHandler);
+      socketRef.current.disconnect();
     };
   }, [user, otherUserId, productId]);
 
@@ -79,9 +75,9 @@ const ChatRoom = () => {
 
   const handleSendMessage = (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !user || !otherUserId) return;
+    if (!newMessage.trim() || !user || !otherUserId || !socketRef.current) return;
 
-    socket.emit('chatMessage', {
+    socketRef.current.emit('chatMessage', {
       sender: user._id,
       receiver: otherUserId,
       content: newMessage,

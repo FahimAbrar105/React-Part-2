@@ -1,30 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
+
+  // If user is already authenticated, redirect to dashboard automatically
+  useEffect(() => {
+    if (user && user.isVerified) {
+        navigate('/dashboard');
+    }
+  }, [user, navigate]);
+
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    if (errorParam) {
+      setError(decodeURIComponent(errorParam));
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     try {
       const data = await login(email, password);
-
-      if (data.redirect) {
-        if (data.email) {
-
-          navigate(data.redirect + (data.email ? `?email=${data.email}` : ''));
+      // Delay navigation slightly to allow React Context (user state) to flush and reach RequireAuth
+      setTimeout(() => {
+        if (data.redirect) {
+          if (data.email) {
+            navigate(data.redirect + `?email=${data.email}`);
+          } else {
+            navigate(data.redirect);
+          }
         } else {
-          navigate(data.redirect);
+          navigate('/dashboard');
         }
-      } else {
-        navigate('/dashboard');
-      }
+      }, 50);
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
     }

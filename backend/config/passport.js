@@ -5,6 +5,7 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const GitHubStrategy = require('passport-github2').Strategy;
 const mongoose = require('mongoose');
 const User = require('../models/User');
+const { v2: cloudinary } = require('cloudinary');
 
 module.exports = function (passport) {
     // Serialize / Deserialize
@@ -43,11 +44,19 @@ module.exports = function (passport) {
             const idMatch = email.match(/\d{9}/);
             const studentId = idMatch ? idMatch[0] : undefined;
 
+            let avatarUrl = profile.photos[0].value;
+            try {
+                const cloudinaryRes = await cloudinary.uploader.upload(avatarUrl, { folder: 'iut-mart' });
+                avatarUrl = cloudinaryRes.secure_url;
+            } catch (err) {
+                console.error("Cloudinary upload failed for Google avatar", err);
+            }
+
             const newUser = {
                 googleId: profile.id,
                 name: profile.displayName,
                 email: email,
-                avatar: profile.photos[0].value,
+                avatar: avatarUrl,
                 studentId: studentId
             };
 
@@ -107,11 +116,19 @@ module.exports = function (passport) {
             const idMatch = email.match(/\d{9}/);
             const studentId = idMatch ? idMatch[0] : undefined;
 
+            let avatarUrl = profile.photos[0].value;
+            try {
+                const cloudinaryRes = await cloudinary.uploader.upload(avatarUrl, { folder: 'iut-mart' });
+                avatarUrl = cloudinaryRes.secure_url;
+            } catch (err) {
+                console.error("Cloudinary upload failed for GitHub avatar", err);
+            }
+
             const newUser = {
                 githubId: profile.id,
                 name: profile.displayName || profile.username,
                 email: email,
-                avatar: profile.photos[0].value,
+                avatar: avatarUrl,
                 studentId: studentId
             };
 

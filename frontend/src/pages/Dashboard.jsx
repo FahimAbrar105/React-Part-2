@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
@@ -26,14 +26,33 @@ import { useAuth } from '../context/AuthContext';
 
 
 const Dashboard = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateAvatar } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [myProducts, setMyProducts] = useState([]);
   const [myOrders, setMyOrders] = useState([]);
   const [holdings, setHoldings] = useState([]); // Client-side holdings from localStorage
   const [loading, setLoading] = useState(true);
 
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+        const formData = new FormData();
+        formData.append('avatar', file);
+        await updateAvatar(formData);
+    } catch (err) {
+        console.error("Failed to update avatar", err);
+        alert("Failed to update profile picture");
+    }
+  };
+
   useEffect(() => {
+    if (searchParams.get('incomplete') === 'true') {
+        navigate('/complete-profile');
+        return;
+    }
+
     const fetchData = async () => {
       try {
         const res = await axios.get('/dashboard');
@@ -54,7 +73,7 @@ const Dashboard = () => {
     };
 
     fetchData();
-  }, []);
+  }, [navigate, searchParams]);
 
   const calculateTotalAssetValue = () => {
     return myProducts.reduce((acc, curr) => acc + curr.price, 0).toLocaleString();
@@ -91,11 +110,26 @@ const Dashboard = () => {
             {/* Portfolio Header */}
             <div className="mb-8 border-b border-border pb-6">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-                    <div>
-                        <h1 className="text-3xl font-bold text-white font-mono tracking-tight mb-2">PORTFOLIO MANAGER</h1>
-                        <p className="text-text-secondary text-sm font-mono">
-                            ACCOUNT: <span className="text-white">{user?.name.toUpperCase().replace(/\d+/g, '').trim()}</span> // ID: {user?.studentId || 'UNKNOWN'}
-                        </p>
+                    <div className="flex items-center space-x-6">
+                        <div className="relative group w-20 h-20 rounded-full overflow-hidden border-2 border-border hover:border-action transition flex-shrink-0 bg-bg">
+                            {user?.avatar ? (
+                                <img src={user.avatar} className="w-full h-full object-cover" alt="Profile" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-surface border border-dashed border-border text-text-secondary">
+                                    <i className="fas fa-user"></i>
+                                </div>
+                            )}
+                            <label className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition">
+                                <i className="fas fa-camera text-white text-xl"></i>
+                                <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} />
+                            </label>
+                        </div>
+                        <div>
+                            <h1 className="text-3xl font-bold text-white font-mono tracking-tight mb-2">PORTFOLIO MANAGER</h1>
+                            <p className="text-text-secondary text-sm font-mono">
+                                ACCOUNT: <span className="text-white">{user?.name?.toUpperCase().replace(/\d+/g, '').trim() || 'USER'}</span> // ID: {user?.studentId || 'UNKNOWN'}
+                            </p>
+                        </div>
                     </div>
                     <div className="mt-4 md:mt-0 flex items-center space-x-6">
                         <div className="text-right">
