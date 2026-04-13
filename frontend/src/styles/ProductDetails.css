@@ -502,6 +502,38 @@
     box-shadow: 0 4px 15px rgba(0, 255, 157, 0.3);
 }
 
+.product-details-page .action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.product-details-page .btn-long {
+    background: rgba(0, 255, 157, 0.1);
+    color: var(--accent-green);
+    border: 1px solid rgba(0, 255, 157, 0.3);
+    width: 100%;
+    padding: 14px;
+    font-size: 0.85rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: var(--font-mono);
+    letter-spacing: 1px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+.product-details-page .btn-long:hover {
+    background: rgba(0, 255, 157, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(0, 255, 157, 0.2);
+}
+
 /* ── Footer ── */
 .product-details-page .bottom-bar {
     margin-top: 15px;

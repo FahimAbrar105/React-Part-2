@@ -94,6 +94,32 @@ const ProductDetails = () => {
         navigate(`/chat/${product.user._id}?productId=${product._id}`);
     };
 
+    const handleAddLongPosition = () => {
+        const savedHoldings = JSON.parse(localStorage.getItem('terminal_portfolio') || '[]');
+        
+        if (savedHoldings.some(h => h.id === product._id)) {
+            alert('Position already held in portfolio.');
+            return;
+        }
+
+        const currentLivePrice = marketStats?.livePrice ?? product.price;
+        const imgSrc = product.images && product.images.length > 0
+            ? (product.images[0].startsWith('http') ? product.images[0] : `http://localhost:5000/${product.images[0]}`)
+            : null;
+
+        const newPosition = {
+            id: product._id,
+            title: product.title,
+            price: currentLivePrice,
+            image: imgSrc,
+            timestamp: new Date().toISOString(),
+            type: 'LONG'
+        };
+
+        localStorage.setItem('terminal_portfolio', JSON.stringify([...savedHoldings, newPosition]));
+        alert('Long position added to portfolio.');
+    };
+
     // ─── Chart helpers ───
     const buildChartPath = (data, width, height) => {
         if (data.length < 2) return { linePath: '', areaPath: '' };
@@ -382,9 +408,14 @@ const ProductDetails = () => {
                                 🗑 LIQUIDATE ASSET (DELETE)
                             </button>
                         ) : (
-                            <button className="btn-message" onClick={handleStartChat}>
-                                ✉ CONTACT SELLER
-                            </button>
+                            <div className="action-buttons">
+                                <button className="btn-long" onClick={handleAddLongPosition}>
+                                    📈 TAKE LONG POSITION
+                                </button>
+                                <button className="btn-message" onClick={handleStartChat}>
+                                    ✉ CONTACT SELLER
+                                </button>
+                            </div>
                         )}
                     </div>
                 </main>
