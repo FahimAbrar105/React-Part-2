@@ -91,7 +91,7 @@ const ProductDetails = () => {
     const handleStartChat = () => {
         if (!user) return navigate('/login');
         if (product.user._id === (user.id || user._id)) return alert("You cannot chat with yourself");
-        navigate(`/chat/start/${product.user._id}?productId=${product._id}`);
+        navigate(`/chat/${product.user._id}?productId=${product._id}`);
     };
 
     // ─── Chart helpers ───

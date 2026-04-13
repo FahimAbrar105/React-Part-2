@@ -10,7 +10,7 @@ const { register, login, logout, verifyOtp, resendOtp, getMe, updateAvatar, remo
 const upload = require('../middleware/upload');
 const { protect } = require('../middleware/auth');
 
-router.post('/register', register);
+router.post('/register', upload.single('avatar'), register);
 router.post('/login', login);
 router.get('/logout', logout);
 router.post('/verify-otp', verifyOtp);

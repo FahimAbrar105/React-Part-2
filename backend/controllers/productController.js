@@ -65,6 +65,8 @@ exports.createProductForm = (req, res) => {
 exports.createProduct = async (req, res) => {
     try {
         const { title, description, price, category, isAnonymous } = req.body;
+        console.log("REQ.BODY:", req.body);
+        console.log("isAnonymous:", isAnonymous, typeof isAnonymous);
 
         // Handle images
         let images = [];
@@ -74,13 +76,15 @@ exports.createProduct = async (req, res) => {
             });
         }
 
+        const isAnonVal = String(isAnonymous).trim().toLowerCase();
+        
         await Product.create({
             title,
             description,
             price,
             category,
             images,
-            isAnonymous: isAnonymous === 'on', // Checkbox sends 'on' if checked
+            isAnonymous: isAnonVal === 'true' || isAnonVal === 'on' || isAnonVal === '1',
             user: req.user.id
         });
 
